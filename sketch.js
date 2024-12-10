@@ -1,3 +1,7 @@
+document.body.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+}, { passive: false });
+
 let ballRadius = 15;            // Radius of the draggable balls
 let playableBallRadius;        // Radius of the playable ball (30% of draggable ball size)
 let numDraggableBalls = 6;     // Total number of draggable balls

@@ -1,0 +1,6 @@
+body, html {
+    overflow: hidden;
+    touch-action: none;
+    height: 100%;
+    margin: 0;
+}
