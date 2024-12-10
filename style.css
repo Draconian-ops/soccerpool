@@ -1,6 +1,13 @@
-body, html {
-    overflow: hidden;
-    touch-action: none;
-    height: 100%;
+html, body {
     margin: 0;
+    padding: 0;
+    height: 100%; /* Full height of the viewport */
+    width: 100%;  /* Full width of the viewport */
+    overflow: hidden; /* Prevent scrollbars */
+}
+
+canvas {
+    display: block; /* Remove extra space below the canvas */
+    width: 100%;    /* Full width */
+    height: 100%;   /* Full height */
 }

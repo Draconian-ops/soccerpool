@@ -19,7 +19,8 @@ let goalWidth = 100;                 // Width of the goalposts
 let goalHeight = 10;                 // Height of the goalposts
 
 function setup() {
-    createCanvas(windowWidth, windowHeight);
+    let canvas = createCanvas(windowWidth, windowHeight);  // Set canvas to full window size
+    canvas.style('display', 'block');  // Remove extra space below the canvas (optional)
     
     currentTurn = (random(1) < 0.5) ? 0 : 1;  // 50% chance for Red or Blue to start
     
