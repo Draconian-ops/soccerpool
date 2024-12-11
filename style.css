@@ -5,7 +5,6 @@ html, body {
     width: 100%;  /* Full width of the viewport */
     overflow: hidden; /* Prevent scrollbars */
 }
-
 canvas {
     display: block; /* Remove extra space below the canvas */
     width: 100%;    /* Full width */

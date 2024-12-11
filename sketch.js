@@ -2,9 +2,10 @@ document.body.addEventListener('touchmove', function(e) {
     e.preventDefault();
 }, { passive: false });
 
+let fieldImage; //store field image
 let ballRadius = 15;            // Radius of the draggable balls
 let playableBallRadius;        // Radius of the playable ball (30% of draggable ball size)
-let numDraggableBalls = 6;     // Total number of draggable balls
+let numDraggableBalls = 12;     // Total number of draggable balls
 let ballPositions = [];        // Array to store positions of draggable balls
 let velocities = [];           // Array to store velocities of draggable balls
 let dragging = [];             // Array to track dragging state of each ball
@@ -15,8 +16,19 @@ let currentTurn = 0;
 let playableBallX, playableBallY;   // Position of the playable ball
 let playableVelocity;                // Velocity of the playable ball
 
-let goalWidth = 100;                 // Width of the goalposts
+let goalWidth = 90;                 // Width of the goalposts
 let goalHeight = 10;                 // Height of the goalposts
+let redScore = 0; // Red team's score
+let blueScore = 0; // Blue team's score
+
+
+function preload() {
+  // Load the field image
+  fieldImage = loadImage('img/field.jfif');  // place image
+}
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);  // Make canvas responsive
+}
 
 function setup() {
     let canvas = createCanvas(windowWidth, windowHeight);  // Set canvas to full window size
@@ -31,56 +43,70 @@ function setup() {
     dragStart = new Array(numDraggableBalls);
     ballColors = new Array(numDraggableBalls);
   
-    let triangleSpacing = ballRadius * 2; // Spacing between the balls
+let triangleSpacing = ballRadius * 2; // Spacing between the balls
+
+// Set positions for team 1 (Red Balls)
+let team1Count = numDraggableBalls / 2;
+let topTipX = width / 2; // Centered horizontally
+let topTipY = goalHeight + 20 + ballRadius; // 20 pixels below the top post
+
+let redIndex = 0;  // Ensure starting index for team 1
+
+for (let row = 0; row < team1Count; row++) {
+  let ballsInRow = row + 1; // Number of balls increases by 1 per row
+  let trapeziumFactor = map(row, 0, team1Count - 1, 4, 6); // Spread factor between rows
   
-    // Set positions for team 1 (Red Balls)
-    let team1Count = numDraggableBalls / 2;
-    let topTipX = width / 2; // Centered horizontally
-    let topTipY = goalHeight + 20 + ballRadius; // 20 pixels below the top post
+  // Adjust the X position for trapezium effect
+  let spreadX = triangleSpacing * trapeziumFactor; // Increase spread with row depth
+  let startX = topTipX - (ballsInRow - 1) * spreadX / 2; // Center the balls in the row
   
-    let redIndex = 0;  // Ensure starting index for team 1
-    for (let row = 0; row < team1Count; row++) {
-      let ballsInRow = row + 1; // Number of balls increases by 1 per row
-      let startX = topTipX - (ballsInRow - 1) * triangleSpacing / 2;
-      let startY = topTipY + row * triangleSpacing;
+  let startY = topTipY + row * triangleSpacing; // Vertical positioning
   
-      for (let col = 0; col < ballsInRow; col++) {
-        if (redIndex < numDraggableBalls) {  // Check to ensure we don't exceed the array size
-          ballPositions[redIndex] = createVector(startX + col * triangleSpacing, startY);
-          ballColors[redIndex] = color(255, 0, 0); // Red
-          velocities[redIndex] = createVector(0, 0);
-          dragging[redIndex] = false;
-          dragStart[redIndex] = createVector(ballPositions[redIndex].x, ballPositions[redIndex].y);
-          redIndex++;
-        }
-      }
+  for (let col = 0; col < ballsInRow; col++) {
+    if (redIndex < numDraggableBalls) {  // Check to ensure we don't exceed the array size
+      // Adjust X position for each ball to create the trapezium effect
+      ballPositions[redIndex] = createVector(startX + col * spreadX, startY);
+      ballColors[redIndex] = color(255, 0, 0); // Red
+      velocities[redIndex] = createVector(0, 0);
+      dragging[redIndex] = false;
+      dragStart[redIndex] = createVector(ballPositions[redIndex].x, ballPositions[redIndex].y);
+      redIndex++;
     }
-  
+  }
+}
+
+
     // Set positions for team 2 (Blue Balls)
     let bottomTipX = width / 2; // Centered horizontally
     let bottomTipY = height - goalHeight - 20 - ballRadius; // 20 pixels above the bottom post
   
     let blueIndex = team1Count; // Start from the index after team 1
-    for (let row = 0; row < team1Count; row++) {
-      let ballsInRow = row + 1;
-      let startX = bottomTipX - (ballsInRow - 1) * triangleSpacing / 2;
-      let startY = bottomTipY - row * triangleSpacing;
+for (let row = 0; row < team1Count; row++) {
+  let ballsInRow = row + 1;
   
-      for (let col = 0; col < ballsInRow; col++) {
-        if (blueIndex < numDraggableBalls) {  // Check to ensure we don't exceed the array size
-          ballPositions[blueIndex] = createVector(startX + col * triangleSpacing, startY);
-          ballColors[blueIndex] = color(0, 0, 255); // Blue
-          velocities[blueIndex] = createVector(0, 0);
-          dragging[blueIndex] = false;
-          dragStart[blueIndex] = createVector(ballPositions[blueIndex].x, ballPositions[blueIndex].y);
-          blueIndex++;
-        }
-      }
+  // Apply trapezium effect for blue team
+  let trapeziumFactor = map(row, 0, team1Count - 1, 4, 6); // Adjust the spread factor as needed
+  let spreadX = triangleSpacing * trapeziumFactor; // Increase spread with row depth
+  let startX = bottomTipX - (ballsInRow - 1) * spreadX / 2; // Center the balls horizontally
+  let startY = bottomTipY - row * triangleSpacing * 1.3; // Increase vertical spacing (adjust as needed)
+
+  for (let col = 0; col < ballsInRow; col++) {
+    if (blueIndex < numDraggableBalls) {
+      // Adjust X position for each ball to create the trapezium effect
+      ballPositions[blueIndex] = createVector(startX + col * spreadX, startY);
+      velocities[blueIndex] = createVector(0, 0);
+      dragging[blueIndex] = false;
+      dragStart[blueIndex] = createVector(ballPositions[blueIndex].x, ballPositions[blueIndex].y);
+      ballColors[blueIndex] = color(0, 0, 255); // Blue color for blue team
+      blueIndex++;
     }
+  }
+}
+
     
     // Initialize the playable ball
     playableBallRadius = ballRadius * 0.5; 
-    playableVelocity = createVector(0, 0); // Properly initialize
+    playableVelocity = createVector(1, 1); // Properly initialize
     resetPlayableBall();
   }
   
@@ -95,12 +121,19 @@ function setup() {
     let redIndex = 0;
     for (let row = 0; row < team1Count; row++) {
         let ballsInRow = row + 1; // Number of balls increases by 1 per row
-        let startX = topTipX - (ballsInRow - 1) * triangleSpacing / 2;
-        let startY = topTipY + row * triangleSpacing;
-
+        let trapeziumFactor = map(row, 0, team1Count - 1, 4, 6); // Spread factor between rows
+        
+        // Adjust the X position for trapezium effect
+        let spreadX = triangleSpacing * trapeziumFactor; // Increase spread with row depth
+        let startX = topTipX - (ballsInRow - 1) * spreadX / 2; // Center the balls in the row
+        
+        let startY = topTipY + row * triangleSpacing; // Vertical positioning
+        
         for (let col = 0; col < ballsInRow; col++) {
             if (redIndex < numDraggableBalls) {
-                ballPositions[redIndex] = createVector(startX + col * triangleSpacing, startY);
+                // Adjust X position for each ball to create the trapezium effect
+                ballPositions[redIndex] = createVector(startX + col * spreadX, startY);
+                ballColors[redIndex] = color(255, 0, 0); // Red color for red team
                 velocities[redIndex] = createVector(0, 0);
                 dragging[redIndex] = false;
                 dragStart[redIndex] = createVector(ballPositions[redIndex].x, ballPositions[redIndex].y);
@@ -116,12 +149,18 @@ function setup() {
     let blueIndex = team1Count; // Start from the index after team 1
     for (let row = 0; row < team1Count; row++) {
         let ballsInRow = row + 1;
-        let startX = bottomTipX - (ballsInRow - 1) * triangleSpacing / 2;
-        let startY = bottomTipY - row * triangleSpacing;
+
+        // Apply trapezium effect for blue team
+        let trapeziumFactor = map(row, 0, team1Count - 1, 4, 6); // Adjust the spread factor as needed
+        let spreadX = triangleSpacing * trapeziumFactor; // Increase spread with row depth
+        let startX = bottomTipX - (ballsInRow - 1) * spreadX / 2; // Center the balls horizontally
+        let startY = bottomTipY - row * triangleSpacing * 1.3; // Increase vertical spacing (adjust as needed)
 
         for (let col = 0; col < ballsInRow; col++) {
             if (blueIndex < numDraggableBalls) {
-                ballPositions[blueIndex] = createVector(startX + col * triangleSpacing, startY);
+                // Adjust X position for each ball to create the trapezium effect
+                ballPositions[blueIndex] = createVector(startX + col * spreadX, startY);
+                ballColors[blueIndex] = color(0, 0, 255); // Blue color for blue team
                 velocities[blueIndex] = createVector(0, 0);
                 dragging[blueIndex] = false;
                 dragStart[blueIndex] = createVector(ballPositions[blueIndex].x, ballPositions[blueIndex].y);
@@ -136,13 +175,35 @@ function toggleTurn() {
   // Switch turns: If it's 0 (Red), set to 1 (Blue), and vice versa
   currentTurn = (currentTurn === 0) ? 1 : 0;
 }
+function displayTurnIndicator() {
+  textSize(30);
+  noFill(); // No fill for the text
 
-// The draw function called continuously
+  // Create a gradient-like effect using stroke color
+  let strokeColor = color(100, 255, 255); // Light cyan for a beautiful stroke
+  stroke(strokeColor);
+
+  // Determine the turn text
+  let turnText = currentTurn === 0 ? "Red's Turn" : "Blue's Turn"; // Display based on the current turn
+
+  // Set padding and positions
+  let padding = 10; // Set padding for spacing from the edge
+  let xPos = padding; // Left side edge with some space
+  let yPos = windowHeight / 2 - 75; // Vertically centered
+
+  // Apply rotation for vertical text (rotate around the top-left corner)
+  push(); // Save current drawing state
+  translate(xPos, yPos); // Move origin to the starting position
+  rotate(HALF_PI); // Rotate 90 degrees (vertical text)
+
+  text(turnText, 0, 0); // Draw the text at the new rotated position
+  pop(); // Restore original drawing state
+}
+
+
+
 function draw() {
-  background(200);
-  
-  // Draw the goalposts
-  drawGoalposts();
+    image(fieldImage, 0, 0, width, height);  // Fill canvas with the image
 
   // Update and draw the draggable balls
   for (let i = 0; i < numDraggableBalls; i++) {
@@ -167,30 +228,88 @@ function draw() {
     );
   }
 
+  // Draw the goalposts
+  drawGoalposts();
+
   // Check if the playable ball hits the goalposts
   checkGoalCollision();
+  displayTurnIndicator();
+  displayScore();
+  
 }
 
 // Draw the goalposts
 function drawGoalposts() {
-  fill(0);
+  let netSpacing = 10; // Space between the grid lines
+  let goalWidth = 90; // goal width
+  let goalHeight = 35; // goal height
+
   // Top goalpost
-  rect(width / 2 - goalWidth / 2, 0, goalWidth, goalHeight);
+  drawNet(width / 2 - goalWidth / 2, 0, goalWidth, goalHeight, netSpacing);
+
   // Bottom goalpost
-  rect(width / 2 - goalWidth / 2, height - goalHeight, goalWidth, goalHeight);
+  drawNet(width / 2 - goalWidth / 2, height - goalHeight, goalWidth, goalHeight, netSpacing);
+}
+function drawNet(x, y, goalWidth, goalHeight, spacing) {
+  stroke(255); // White color for the net lines
+  strokeWeight(2); // Thin lines
+  noFill();
+
+  // Vertical lines
+  for (let i = x; i <= x + goalWidth; i += spacing) {
+    line(i, y, i, y + goalHeight);
+  }
+
+  // Horizontal lines
+  for (let j = y; j <= y + goalHeight; j += spacing) {
+    line(x, j, x + goalWidth, j);
+  }
 }
 
 // Update the draggable ball's state
 function updateDraggableBall(index) {
-  // If dragging, draw the drag line
+  // If dragging, draw the drag line and expanding cone effect
   if (dragging[index]) {
+    // Calculate the drag direction vector (opposite to mouse drag)
+    let dragVector = createVector(dragStart[index].x - mouseX, dragStart[index].y - mouseY); // Invert the direction
+    
+    // Draw the drag line
     line(dragStart[index].x, dragStart[index].y, mouseX, mouseY);
+
+    // Now create the expanding cone effect in the opposite direction
+    let maxLength = dragVector.mag();  // Maximum length of the cone (distance dragged)
+    let stepSize = 10;  // How many steps (sections) to draw for the expanding effect
+    
+    // Calculate the angle of the drag vector (this is the direction the ball is going)
+    let coneAngle = dragVector.heading(); // The direction of the drag (opposite direction of the mouse drag)
+
+    // Set the color for the cone with transparency (light orange)
+    fill(255, 165, 0, 100);  // Light orange with transparency
+    noStroke();  // No outline for the cone
+
+    // Draw the cone using a triangle shape
+    for (let i = 0; i <= maxLength; i += stepSize) {
+      let lineLength = map(i, 0, maxLength, 5, 20);  // Increase the line length as the cone expands
+
+      // Calculate the points of the cone shape at the current step
+      let x1 = dragStart[index].x + cos(coneAngle - PI / 4) * i;
+      let y1 = dragStart[index].y + sin(coneAngle - PI / 4) * i;
+      let x2 = dragStart[index].x + cos(coneAngle + PI / 4) * i;
+      let y2 = dragStart[index].y + sin(coneAngle + PI / 4) * i;
+
+      // Now create the shape (triangle for each segment of the cone)
+      beginShape();
+      vertex(dragStart[index].x, dragStart[index].y); // Start at the drag point
+      vertex(x1, y1); // Left side of the cone
+      vertex(x2, y2); // Right side of the cone
+      endShape(CLOSE); // Close the shape to form a triangle
+    }
   }
-  
-  // Draw the draggable ball
+
+  // Draw the draggable ball (on top of the cone)
   fill(ballColors[index]);
   ellipse(ballPositions[index].x, ballPositions[index].y, ballRadius * 2, ballRadius * 2);
-  
+
   // Update position using velocity if not dragging
   if (!dragging[index]) {
     ballPositions[index].add(velocities[index]);
@@ -209,6 +328,9 @@ function updateDraggableBall(index) {
     }
   }
 }
+
+
+
 // Update the playable ball's state
 function updatePlayableBall() {
     // Draw the playable ball
@@ -235,21 +357,25 @@ function updatePlayableBall() {
   
   // Check for goal collisions
   function checkGoalCollision() {
-    // Top goalpost
-    if (playableBallY - playableBallRadius <= goalHeight &&
+       // Top goalpost (Red's goal)
+       if (playableBallY - playableBallRadius <= goalHeight &&
         abs(playableBallX - width / 2) <= goalWidth / 2) {
-      resetPlayableBall();
-      resetDraggableBalls();
-      toggleTurn();  // Switch turns after a goal
+        // Goal for the blue team (red team scored)
+        blueScore++;  // Award a goal to the blue team
+        resetPlayableBall();
+        resetDraggableBalls();
+        toggleTurn();  // Switch turns after a goal
     }
   
-    // Bottom goalpost
+    // Bottom goalpost (Blue's goal)
     if (playableBallY + playableBallRadius >= height - goalHeight &&
-        abs(playableBallX - width / 2) <= goalWidth / 2) {
+      abs(playableBallX - width / 2) <= goalWidth / 2) {
+      // Goal for the red team (blue team scored)
+      redScore++;  // Award a goal to the red team
       resetPlayableBall();
       resetDraggableBalls();
       toggleTurn();  // Switch turns after a goal
-    }
+  }
   }
   
   // Reset the playable ball to the center
@@ -258,6 +384,14 @@ function updatePlayableBall() {
     playableBallY = height / 2;
     playableVelocity.set(0, 0);
   }
+  function displayScore() {
+    textSize(32);
+    stroke(255, 255, 255); // White color for the stroke
+    noFill(); // No fill for the text
+    
+    text(redScore, windowWidth - 30, windowHeight / 2 - 20); // Display Red score
+    text(blueScore, windowWidth - 30, windowHeight / 2 + 40); // Display Blue score
+}
   
   // Check for collisions between two balls
   function checkCollision(pos1, vel1, radius1, pos2, vel2, radius2) {
