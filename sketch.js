@@ -20,11 +20,76 @@ let goalWidth = 90;                 // Width of the goalposts
 let goalHeight = 10;                 // Height of the goalposts
 let redScore = 0; // Red team's score
 let blueScore = 0; // Blue team's score
+let ballCollisionSound;
+let boundaryHitSound;
+let goalScoreSound;
+
+class SparkleParticle {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.size = random(5, 15);
+    this.color = color(255, random(200, 255), random(50, 150), 255);
+    this.velocity = p5.Vector.random2D().mult(random(1, 3));
+    this.lifetime = 30; // Number of frames the particle will exist
+    this.opacity = 255;
+  }
+
+  update() {
+    this.pos.add(this.velocity);
+    this.velocity.mult(0.95); // Slight deceleration
+    this.size *= 0.9; // Shrink over time
+    this.opacity -= 8; // Fade out
+  }
+
+  display() {
+    noStroke();
+    fill(red(this.color), green(this.color), blue(this.color), this.opacity);
+    ellipse(this.pos.x, this.pos.y, this.size);
+  }
+
+  isDead() {
+    return this.opacity <= 0;
+  }
+}
+
+class SparkleSystem {
+  constructor() {
+    this.particles = [];
+  }
+
+  addSparkle(x, y) {
+    // Add multiple particles for a burst effect
+    for (let i = 0; i < 10; i++) {
+      this.particles.push(new SparkleParticle(x, y));
+    }
+  }
+
+  update() {
+    // Update and remove dead particles
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      this.particles[i].update();
+      if (this.particles[i].isDead()) {
+        this.particles.splice(i, 1);
+      }
+    }
+  }
+
+  display() {
+    this.particles.forEach(particle => particle.display());
+  }
+}
+
+// Global sparkle system
+let sparkleSystem;
 
 
 function preload() {
   // Load the field image
   fieldImage = loadImage('img/field.jfif');  // place image
+  //game sounds
+  ballCollisionSound = loadSound('audio/soccer-ball-kick-37625.mp3');
+  boundaryHitSound = loadSound('audio/hammer-hitting-a-head-100624.mp3');
+  goalScoreSound = loadSound('audio/mixkit-winning-a-coin-video-game-2069.mp3');
 }
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);  // Make canvas responsive
@@ -108,6 +173,8 @@ for (let row = 0; row < team1Count; row++) {
     playableBallRadius = ballRadius * 0.5; 
     playableVelocity = createVector(1, 1); // Properly initialize
     resetPlayableBall();
+
+    sparkleSystem = new SparkleSystem();
   }
   
   function resetDraggableBalls() {
@@ -203,39 +270,43 @@ function displayTurnIndicator() {
 
 
 function draw() {
-    image(fieldImage, 0, 0, width, height);  // Fill canvas with the image
+  image(fieldImage, 0, 0, width, height);  // Fill canvas with the image
 
-  // Update and draw the draggable balls
-  for (let i = 0; i < numDraggableBalls; i++) {
-    updateDraggableBall(i);
+// Update and draw the draggable balls
+for (let i = 0; i < numDraggableBalls; i++) {
+  updateDraggableBall(i);
+}
+
+// Check collisions between the draggable balls (no sparkles)
+for (let i = 0; i < numDraggableBalls; i++) {
+  for (let j = i + 1; j < numDraggableBalls; j++) {
+    checkCollision(ballPositions[i], velocities[i], ballRadius, ballPositions[j], velocities[j], ballRadius);
   }
+}
 
-  // Check collisions between the draggable balls
-  for (let i = 0; i < numDraggableBalls; i++) {
-    for (let j = i + 1; j < numDraggableBalls; j++) {
-      checkCollision(ballPositions[i], velocities[i], ballRadius, ballPositions[j], velocities[j], ballRadius);
-    }
-  }
+// Update and draw the playable ball
+updatePlayableBall();
 
-  // Update and draw the playable ball
-  updatePlayableBall();
+// Check collisions between the playable ball and draggable balls (with sparkles)
+for (let i = 0; i < numDraggableBalls; i++) {
+  checkCollision(
+    createVector(playableBallX, playableBallY), playableVelocity, playableBallRadius,
+    ballPositions[i], velocities[i], ballRadius,
+    true  // This enables sparkles only for playable ball collisions
+  );
+}
 
-  // Check collisions between the playable ball and draggable balls
-  for (let i = 0; i < numDraggableBalls; i++) {
-    checkCollision(
-      createVector(playableBallX, playableBallY), playableVelocity, playableBallRadius,
-      ballPositions[i], velocities[i], ballRadius
-    );
-  }
+// Draw the goalposts
+drawGoalposts();
 
-  // Draw the goalposts
-  drawGoalposts();
+// Check if the playable ball hits the goalposts
+checkGoalCollision();
+displayTurnIndicator();
+displayScore();
 
-  // Check if the playable ball hits the goalposts
-  checkGoalCollision();
-  displayTurnIndicator();
-  displayScore();
-  
+// Update and display sparkle system
+sparkleSystem.update();
+sparkleSystem.display();
 }
 
 // Draw the goalposts
@@ -321,10 +392,12 @@ function updateDraggableBall(index) {
     if (ballPositions[index].x - ballRadius < 0 || ballPositions[index].x + ballRadius > width) {
       velocities[index].x *= -0.9;
       ballPositions[index].x = constrain(ballPositions[index].x, ballRadius, width - ballRadius);
+      boundaryHitSound.play();
     }
     if (ballPositions[index].y - ballRadius < 0 || ballPositions[index].y + ballRadius > height) {
       velocities[index].y *= -0.9;
       ballPositions[index].y = constrain(ballPositions[index].y, ballRadius, height - ballRadius);
+      boundaryHitSound.play();
     }
   }
 }
@@ -362,6 +435,7 @@ function updatePlayableBall() {
         abs(playableBallX - width / 2) <= goalWidth / 2) {
         // Goal for the blue team (red team scored)
         blueScore++;  // Award a goal to the blue team
+        goalScoreSound.play();
         resetPlayableBall();
         resetDraggableBalls();
         toggleTurn();  // Switch turns after a goal
@@ -372,6 +446,7 @@ function updatePlayableBall() {
       abs(playableBallX - width / 2) <= goalWidth / 2) {
       // Goal for the red team (blue team scored)
       redScore++;  // Award a goal to the red team
+      goalScoreSound.play();
       resetPlayableBall();
       resetDraggableBalls();
       toggleTurn();  // Switch turns after a goal
@@ -394,7 +469,7 @@ function updatePlayableBall() {
 }
   
   // Check for collisions between two balls
-  function checkCollision(pos1, vel1, radius1, pos2, vel2, radius2) {
+  function checkCollision(pos1, vel1, radius1, pos2, vel2, radius2, isPlayableBallCollision = false) {
     let distance = dist(pos1.x, pos1.y, pos2.x, pos2.y);
     if (distance < radius1 + radius2) {
       // Calculate the collision normal
@@ -415,6 +490,14 @@ function updatePlayableBall() {
       let impulseVector = normal.mult(impulse);
       vel1.add(impulseVector);
       vel2.sub(impulseVector);
+
+      // Add sparkles only for playable ball collisions
+      if (isPlayableBallCollision) {
+        ballCollisionSound.play();
+        let collisionX = (pos1.x + pos2.x) / 2;
+        let collisionY = (pos1.y + pos2.y) / 2;
+        sparkleSystem.addSparkle(collisionX, collisionY);
+      }
       
       // Resolve penetration
       let overlap = radius1 + radius2 - distance;
