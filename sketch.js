@@ -87,9 +87,28 @@ function preload() {
   // Load the field image
   fieldImage = loadImage('img/field.jfif');  // place image
   //game sounds
-  ballCollisionSound = loadSound('audio/soccer-ball-kick-37625.mp3');
-  boundaryHitSound = loadSound('audio/hammer-hitting-a-head-100624.mp3');
-  goalScoreSound = loadSound('audio/mixkit-winning-a-coin-video-game-2069.mp3');
+  // Use try-catch to handle potential loading errors
+  try {
+    ballCollisionSound = loadSound('audio/soccer-ball-kick-37625.mp3', 
+      () => console.log('Ball collision sound loaded'),
+      () => console.error('Error loading ball collision sound')
+    );
+    boundaryHitSound = loadSound('audio/hammer-hitting-a-head-100624.mp3',
+      () => console.log('Boundary hit sound loaded'),
+      () => console.error('Error loading boundary hit sound')
+    );
+    goalScoreSound = loadSound('audio/mixkit-winning-a-coin-video-game-2069.mp3',
+      () => console.log('Goal score sound loaded'),
+      () => console.error('Error loading goal score sound')
+    );
+  } catch (error) {
+    console.error('Sound loading error:', error);
+  }
+}
+function playSound(sound) {
+  if (sound && sound.isLoaded()) {
+    sound.play();
+  }
 }
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);  // Make canvas responsive
@@ -392,12 +411,12 @@ function updateDraggableBall(index) {
     if (ballPositions[index].x - ballRadius < 0 || ballPositions[index].x + ballRadius > width) {
       velocities[index].x *= -0.9;
       ballPositions[index].x = constrain(ballPositions[index].x, ballRadius, width - ballRadius);
-      boundaryHitSound.play();
+      playSound(boundaryHitSound);
     }
     if (ballPositions[index].y - ballRadius < 0 || ballPositions[index].y + ballRadius > height) {
       velocities[index].y *= -0.9;
       ballPositions[index].y = constrain(ballPositions[index].y, ballRadius, height - ballRadius);
-      boundaryHitSound.play();
+      playSound(boundaryHitSound);
     }
   }
 }
@@ -435,7 +454,7 @@ function updatePlayableBall() {
         abs(playableBallX - width / 2) <= goalWidth / 2) {
         // Goal for the blue team (red team scored)
         blueScore++;  // Award a goal to the blue team
-        goalScoreSound.play();
+        playSound(goalScoreSound);
         resetPlayableBall();
         resetDraggableBalls();
         toggleTurn();  // Switch turns after a goal
@@ -446,7 +465,7 @@ function updatePlayableBall() {
       abs(playableBallX - width / 2) <= goalWidth / 2) {
       // Goal for the red team (blue team scored)
       redScore++;  // Award a goal to the red team
-      goalScoreSound.play();
+      playSound(goalScoreSound);
       resetPlayableBall();
       resetDraggableBalls();
       toggleTurn();  // Switch turns after a goal
@@ -493,7 +512,7 @@ function updatePlayableBall() {
 
       // Add sparkles only for playable ball collisions
       if (isPlayableBallCollision) {
-        ballCollisionSound.play();
+        playSound(ballCollisionSound);
         let collisionX = (pos1.x + pos2.x) / 2;
         let collisionY = (pos1.y + pos2.y) / 2;
         sparkleSystem.addSparkle(collisionX, collisionY);
